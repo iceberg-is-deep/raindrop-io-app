@@ -48,8 +48,8 @@ export default class Modal extends React.Component {
         window.removeEventListener('mousedown', this.onWindowMouseDown, true)
     }
 
-    onWindowKeyDown = e=>{
-        switch(e.key) {
+    onWindowKeyDown = e => {
+        switch (e.key) {
             case 'Escape':
                 if (!eventOrder.isLast(this))
                     return
@@ -57,21 +57,24 @@ export default class Modal extends React.Component {
                 e.preventDefault()
                 e.stopPropagation()
                 this.props.onClose()
-            break
+                break
         }
     }
 
     onWindowMouseDown = e => {
+        //always allow right-click (context menu) to pass through
+        if (e.button === 2) return
+
         //prevent clicking outside when important true
         if (this.props.important &&
-            !this.body.current?.contains(e.target)){
+            !this.body.current?.contains(e.target)) {
             e.preventDefault()
             e.stopPropagation()
         }
     }
 
     render() {
-        const { as='div', children, onClose, closable, important, hidden, stretch, className='', ...etc } = this.props
+        const { as = 'div', children, onClose, closable, important, hidden, stretch, className = '', ...etc } = this.props
         const Component = as
 
         return (
@@ -84,14 +87,14 @@ export default class Modal extends React.Component {
                     )}
 
                     <div
-                        className={s.modal+' '+(important ? s.important : '')+(hidden ? ' '+s.hidden : '')}>
-                        <Component 
-                            className={s.wrap+' '+className}
+                        className={s.modal + ' ' + (important ? s.important : '') + (hidden ? ' ' + s.hidden : '')}>
+                        <Component
+                            className={s.wrap + ' ' + className}
                             data-stretch={stretch}
                             {...etc}>
-                            <div 
+                            <div
                                 ref={this.body}
-                                className={s.body} 
+                                className={s.body}
                                 role='dialog'>
                                 {children}
                             </div>
