@@ -3,86 +3,89 @@ import { REHYDRATE } from 'redux-persist/src/constants'
 import { USER_LOAD_SUCCESS, USER_UPDATE_SUCCESS, USER_UPDATE_REQ } from '../constants/user'
 import Immutable from 'seamless-immutable'
 
-export default function(state = initialState, action){switch (action.type) {
-	case REHYDRATE:
-	case USER_LOAD_SUCCESS:
-	case USER_UPDATE_REQ:
-	case USER_UPDATE_SUCCESS:{
-		const changed = action.user && action.user.config || (action.payload && action.payload.config||{})
+export default function (state = initialState, action) {
+	switch (action.type) {
+		case REHYDRATE:
+		case USER_LOAD_SUCCESS:
+		case USER_UPDATE_REQ:
+		case USER_UPDATE_SUCCESS: {
+			const changed = action.user && action.user.config || (action.payload && action.payload.config || {})
 
-		_.forEach(
-			initialState,
-			(val,key)=>{
-				if (typeof changed[key] != 'undefined')
-					state = mutate(state, key, changed[key])
-			}
-		)
+			_.forEach(
+				initialState,
+				(val, key) => {
+					if (typeof changed[key] != 'undefined')
+						state = mutate(state, key, changed[key])
+				}
+			)
 
-		return state
+			return state
+		}
+
+		case 'RESET': {
+			return state.merge(_.omit(initialState, safeKeys))
+		}
+
+		default:
+			return state
 	}
+}
 
-	case 'RESET':{
-		return state.merge(_.omit(initialState, safeKeys))
-	}
-
-	default:
-		return state
-}}
-
-const mutate = (state, key='', val='')=>{
+const mutate = (state, key = '', val = '') => {
 	let modified
-	switch(typeof initialState[key]){
-		case 'string':	modified = String(val || ''); break
-		case 'number':	modified = parseInt(val || 0); break
-		case 'boolean':	modified = Boolean(val); break
+	switch (typeof initialState[key]) {
+		case 'string': modified = String(val || ''); break
+		case 'number': modified = parseInt(val || 0); break
+		case 'boolean': modified = Boolean(val); break
 		case 'object':
-			switch(initialState[key].constructor) {
+			switch (initialState[key].constructor) {
 				case Array: if (val.constructor == Array) modified = val; break
 				case Object: if (val.constructor == Object) modified = val; break
 			}
-		break
-		default:		return state //ignore
+			break
+		default: return state //ignore
 	}
 	return state.set(key, modified)
 }
 
 const initialState = Immutable({
-	lang:					'', //should be empty!!
-	last_collection:		0,
+	lang: '', //should be empty!!
+	last_collection: 0,
 
-	raindrops_sort:			'sort',
-	raindrops_hide:			[],
-	raindrops_grid_cover_size:	2,
-	raindrops_list_cover_size:	1,
-	raindrops_list_cover_right:	false,
-	raindrops_click:		'new_tab',
-	raindrops_buttons:		[],
-	raindrops_search_by_score:true,
-	raindrops_search_incollection:false,
-	
-	filters_hide:			false,
-	tags_sort:				'_id',
-	tags_hide:				false,
+	raindrops_sort: 'sort',
+	raindrops_hide: [],
+	raindrops_grid_cover_size: 2,
+	raindrops_list_cover_size: 1,
+	raindrops_list_cover_right: false,
+	raindrops_click: 'new_tab',
+	raindrops_buttons: [],
+	raindrops_search_by_score: true,
+	raindrops_search_incollection: false,
 
-	default_collection_view:	'list',
-	nested_view_legacy:		false,
+	filters_hide: false,
+	tags_sort: '_id',
+	tags_hide: false,
 
-	font_size: 				0,
-	font_color: 			'',
-	font_family: 			'',
+	default_collection_view: 'list',
+	nested_view_legacy: false,
 
-	broken_level:			'',
+	font_size: 0,
+	font_color: '',
+	font_family: '',
+
+	broken_level: '',
 
 	add_default_collection: 0, //last_used
-	add_auto_save:			false,
-	mobile_add_auto_save:	false,
-	
+	add_auto_save: false,
+	mobile_add_auto_save: false,
+	add_parse_description_local: true,
+
 	browser_extension_mode: 'clipper',
 
-	acknowledge:			[],
+	acknowledge: [],
 
-	ai_suggestions:			true,
-	ai_assistant:			true,
+	ai_suggestions: true,
+	ai_assistant: true,
 })
 
 //this keys can be kept untouched on reset
@@ -91,5 +94,6 @@ const safeKeys = [
 	'lang',
 	'add_default_collection',
 	'add_auto_save',
+	'add_parse_description_local',
 	'browser_extension_mode'
 ]

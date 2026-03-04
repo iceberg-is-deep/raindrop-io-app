@@ -2,38 +2,47 @@ const fs = require('fs')
 const locales = require('./locales')
 
 function file({ emitFile }, filename) {
-	const name = 'assets/'+filename.split('/').pop()
+	const name = 'assets/' + filename.split('/').pop()
 	emitFile(name, fs.readFileSync(`${__dirname}/${filename}`))
 	return name
 }
 
-module.exports = ({ vendor, production=false }, l) => {
+module.exports = ({ vendor, production = false }, l) => {
 	const { version } = JSON.parse(fs.readFileSync(`${__dirname}/../../../../package.json`, 'utf-8'))
 
 	//locales generation
 	locales(l)
 
 	const json = {
-		manifest_version:3,
+		manifest_version: 3,
 
 		//internal version bigger
-		version:		version.replace(/^5/, '6'),
+		version: version.replace(/^5/, '6'),
 		//showed for user (ignored in firefox)
 		...(vendor != 'firefox' ? {
-			version_name:	version,
+			version_name: version,
 		} : {}),
 
-		name:			'Raindrop.io'+(!production?' (Dev)':''),
-		description:	'__MSG_appDesc__',
-		homepage_url:	'https://app.raindrop.io',
-		author:			'Mussabekov Rustem',
-		short_name:		'Raindrop.io',
-		default_locale:	'en',
+		name: 'Raindrop.io' + (!production ? ' (Dev)' : ''),
+		description: '__MSG_appDesc__',
+		homepage_url: 'https://app.raindrop.io',
+		author: 'Mussabekov Rustem and forked by Byuserforuser',
+		short_name: 'Raindrop.io',
+		default_locale: 'en',
 
-		...(vendor=='firefox' ? {
+		...(vendor == 'firefox' ? {
 			browser_specific_settings: {
 				gecko: {
-					id: 'jid0-adyhmvsP91nUO8pRv0Mn2VKeB84@jetpack'
+					id: 'raindrop-io-forked@byuserforuser.com',
+					data_collection_permissions: {
+						required: [
+							"none"
+						]
+					},
+					strict_min_version: "140.0"
+				},
+				gecko_android: {
+					strict_min_version: "142.0"
 				}
 			},
 		} : {}),
@@ -57,13 +66,13 @@ module.exports = ({ vendor, production=false }, l) => {
 		),
 
 		action: {
-			default_popup: vendor=='safari' ? 
+			default_popup: vendor == 'safari' ?
 				[
 					file(l, '../../../assets/target/extension/action_in_iframe.html'),
 					file(l, '../../../assets/target/extension/action_in_iframe.js'),
-				][0] : 
+				][0] :
 				'index.html?action',
-			
+
 			default_icon: vendor == 'firefox' ?
 				//firefox
 				file(l, '../../../assets/target/extension/action.svg') :
@@ -96,7 +105,7 @@ module.exports = ({ vendor, production=false }, l) => {
 			...(vendor == 'chrome' || vendor == 'edge' ? ['sidePanel'] : []),
 			...(vendor == 'safari-ios' ? ['tabs'] : [])
 		],
-		
+
 		optional_permissions: [
 			...(vendor != 'safari-ios' ? ['tabs'] : []),
 		],
@@ -140,7 +149,7 @@ module.exports = ({ vendor, production=false }, l) => {
 				},
 				description: '__MSG_savePageOrHighlight__'
 			},
-			
+
 			open_raindrop_web: {
 				description: '__MSG_openRaindrop__'
 			},
@@ -152,7 +161,7 @@ module.exports = ({ vendor, production=false }, l) => {
 					},
 					description: '__MSG_openSidePanel__'
 				}
-			}: {}),
+			} : {}),
 
 			...(vendor == 'firefox' || vendor == 'opera' ? {
 				_execute_sidebar_action: {
@@ -161,7 +170,7 @@ module.exports = ({ vendor, production=false }, l) => {
 					},
 					description: '__MSG_openSidePanel__'
 				}
-			}: {}),
+			} : {}),
 		},
 
 		//sidebar
@@ -180,7 +189,7 @@ module.exports = ({ vendor, production=false }, l) => {
 					open_at_install: false
 				} : {})
 			}
-		}: {})
+		} : {})
 	}
 
 	return { code: JSON.stringify(json, null, 2) };
