@@ -47,7 +47,29 @@ function grabImages() {
         const viewportTop = window.scrollY
         const viewportBottom = viewportTop + window.innerHeight
 
-        for (const img of document.querySelectorAll('img')) {
+        // Helper to compute viewport overlap score
+        function viewportOverlap(el) {
+            const rect = el.getBoundingClientRect()
+            const elTop = rect.top + viewportTop
+            const elBottom = rect.bottom + viewportTop
+            return Math.max(0, Math.min(elBottom, viewportBottom) - Math.max(elTop, viewportTop))
+        }
+
+        // Prefer searching inside the topmost visible dialog/modal if one is open
+        // (e.g. Facebook post popup) to avoid picking up background images
+        let scope = document
+        const dialogs = [...document.querySelectorAll('[role="dialog"],[aria-modal="true"]')]
+            .filter(el => {
+                const rect = el.getBoundingClientRect()
+                return rect.width > 100 && rect.height > 100 && el.offsetParent !== null
+            })
+        if (dialogs.length > 0) {
+            // Use the last (topmost) visible dialog
+            scope = dialogs[dialogs.length - 1]
+        }
+
+        // 1. Collect from <img> tags
+        for (const img of scope.querySelectorAll('img')) {
             if (!img.complete || !img.src || img.src.includes('.svg')) continue
             if (!img.offsetParent) continue //is hidden
             if (img.closest('header, footer, aside')) continue //minor image
@@ -59,25 +81,38 @@ function grabImages() {
                 let url
                 try { url = new URL(img.currentSrc || img.src, location.href).href } catch (e) { }
                 if (!url) continue
-
-                // Score by how much of the image overlaps with the viewport
-                const rect = img.getBoundingClientRect()
-                const imgTop = rect.top + viewportTop
-                const imgBottom = rect.bottom + viewportTop
-                const overlapTop = Math.max(imgTop, viewportTop)
-                const overlapBottom = Math.min(imgBottom, viewportBottom)
-                const overlap = Math.max(0, overlapBottom - overlapTop)
-
-                candidates.push({ url, overlap })
+                candidates.push({ url, overlap: viewportOverlap(img) })
             }
+        }
+
+        // 2. Collect from elements with inline background-image: url(...)
+        const bgUrlRe = /url\(\s*['"]?([^'")]+)['"]?\s*\)/i
+        for (const el of scope.querySelectorAll('[style*="background-image"]')) {
+            if (!el.offsetParent) continue //is hidden
+            if (el.closest('header, footer, aside')) continue //minor element
+
+            const match = bgUrlRe.exec(el.style.backgroundImage || el.getAttribute('style') || '')
+            if (!match) continue
+
+            const rawUrl = match[1].trim()
+            if (!rawUrl || rawUrl.includes('.svg')) continue
+
+            let url
+            try { url = new URL(rawUrl, location.href).href } catch (e) { continue }
+
+            const rect = el.getBoundingClientRect()
+            if (rect.width < 100 || rect.height < 100) continue
+
+            candidates.push({ url, overlap: viewportOverlap(el) })
         }
     } catch (e) { console.log(e) }
 
-    // Sort by viewport overlap descending (visible images first)
+    // Sort by viewport overlap descending (visible images first), deduplicate
     candidates.sort((a, b) => b.overlap - a.overlap)
-
-    return candidates.slice(0, 9).map(c => c.url)
+    const seen = new Set()
+    return candidates.filter(c => seen.has(c.url) ? false : (seen.add(c.url), true)).slice(0, 9).map(c => c.url)
 }
+
 
 function similarURL(url) {
     if (!url)
