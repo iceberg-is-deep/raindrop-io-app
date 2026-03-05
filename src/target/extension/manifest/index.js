@@ -23,11 +23,11 @@ module.exports = ({ vendor, production = false }, l) => {
 			version_name: version,
 		} : {}),
 
-		name: 'Raindrop.io' + (!production ? ' (Dev)' : ''),
+		name: 'Raindrop.io forked' + (!production ? ' (Dev)' : ''),
 		description: '__MSG_appDesc__',
 		homepage_url: 'https://app.raindrop.io',
 		author: 'Mussabekov Rustem and forked by Byuserforuser',
-		short_name: 'Raindrop.io',
+		short_name: 'Raindrop.io forked',
 		default_locale: 'en',
 
 		...(vendor == 'firefox' ? {

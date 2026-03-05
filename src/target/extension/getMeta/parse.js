@@ -184,17 +184,28 @@ function getItem() {
         let res = [];
 
         if (location.hostname.includes('facebook.com')) {
-            const sMobileView = 'div.bg-s7.m:nth-of-type(4) > .m';
+            // Desktop view
             const sDesktopView = 'div[data-ad-rendering-role="story_message"]';
-            const elMobile = document.querySelector(sMobileView);
             const elDesktops = document.querySelectorAll(sDesktopView);
-
             if (elDesktops.length > 0) {
                 res.push(elDesktops[elDesktops.length - 1].innerText);
             }
 
-            if (elMobile) {
-                res.push(elMobile.innerText);
+            // Mobile web view (light mode and dark mode on m.facebook.com) — post body is the
+            // tallest ServerTextArea that is outside comment containers
+            if (res.length === 0) {
+                const elPostBody = [...document.querySelectorAll('[data-mcomponent="ServerTextArea"][data-type="text"]')]
+                    .filter(el => {
+                        if (el.closest('[data-tracking-duration-id]')) return false // skip comments
+                        return parseFloat(el.style.height || '0') > 100 // must have real height
+                    })
+                    .sort((a, b) => parseFloat(b.style.height || '0') - parseFloat(a.style.height || '0'))[0]
+
+                if (elPostBody) {
+                    const spans = [...elPostBody.querySelectorAll('.f1')]
+                    if (spans.length > 0)
+                        res.push(spans.map(s => s.innerText).join('\n'))
+                }
             }
         } else {
             res = [...document.querySelectorAll('p')]

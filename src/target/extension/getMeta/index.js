@@ -5,7 +5,7 @@ import parse from './parse?asis'
 export async function getMeta(tab) {
     const { id, url: link, title } = tab || await currentTab()
 
-    try{
+    try {
         if (browser.scripting) {
             const [res] = await browser.scripting.executeScript({
                 target: { tabId: id },
