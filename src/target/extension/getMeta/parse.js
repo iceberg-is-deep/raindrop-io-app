@@ -15,7 +15,7 @@ function getJsonLd() {
 
     try {
         for (const elem of [...document.querySelectorAll('script[type="application/ld+json"]')]) {
-            const json = JSON.parse(elem.innerText) || {}
+            const json = JSON.parse(elem.textContent) || {}
             if (typeof json['@context'] != 'string' || !json['@context'].includes('schema.org')) continue
             if (json.url && !similarURL(json.url)) continue
             if (json['@id'] && URL.canParse(json['@id']) && !similarURL(json['@id'])) continue
@@ -47,9 +47,8 @@ function grabImages() {
         const viewportTop = window.scrollY
         const viewportBottom = viewportTop + window.innerHeight
 
-        // Helper to compute viewport overlap score
-        function viewportOverlap(el) {
-            const rect = el.getBoundingClientRect()
+        // Helper to compute viewport overlap score from a pre-read rect
+        function viewportOverlap(rect) {
             const elTop = rect.top + viewportTop
             const elBottom = rect.bottom + viewportTop
             return Math.max(0, Math.min(elBottom, viewportBottom) - Math.max(elTop, viewportTop))
@@ -68,43 +67,44 @@ function grabImages() {
             scope = dialogs[dialogs.length - 1]
         }
 
-        // 1. Collect from <img> tags
-        for (const img of scope.querySelectorAll('img')) {
-            if (!img.complete || !img.src || img.src.includes('.svg')) continue
-            if (!img.offsetParent) continue //is hidden
-            if (img.closest('header, footer, aside')) continue //minor image
-
+        // 1. Collect from <img> tags — read all rects in one batch to avoid per-element reflow
+        const imgEls = [...scope.querySelectorAll('img')].filter(img => {
+            if (!img.complete || !img.src || img.src.includes('.svg')) return false
+            if (!img.offsetParent) return false //is hidden
+            if (img.closest('header, footer, aside')) return false //minor image
             const width = Math.min(img.naturalWidth, img.width)
             const height = Math.min(img.naturalHeight, img.height)
-
-            if (width > 100 && height > 100) {
-                let url
-                try { url = new URL(img.currentSrc || img.src, location.href).href } catch (e) { }
-                if (!url) continue
-                candidates.push({ url, overlap: viewportOverlap(img) })
-            }
-        }
+            return width > 100 && height > 100
+        })
+        // Batch rect reads (all getBoundingClientRect calls together, then process)
+        const imgRects = imgEls.map(img => img.getBoundingClientRect())
+        imgEls.forEach((img, i) => {
+            let url
+            try { url = new URL(img.currentSrc || img.src, location.href).href } catch (e) { }
+            if (!url) return
+            candidates.push({ url, overlap: viewportOverlap(imgRects[i]) })
+        })
 
         // 2. Collect from elements with inline background-image: url(...)
         const bgUrlRe = /url\(\s*['"]?([^'")]+)['"]?\s*\)/i
-        for (const el of scope.querySelectorAll('[style*="background-image"]')) {
-            if (!el.offsetParent) continue //is hidden
-            if (el.closest('header, footer, aside')) continue //minor element
-
+        const bgEls = [...scope.querySelectorAll('[style*="background-image"]')].filter(el => {
+            if (!el.offsetParent) return false //is hidden
+            if (el.closest('header, footer, aside')) return false //minor element
+            return true
+        })
+        // Batch rect reads
+        const bgRects = bgEls.map(el => el.getBoundingClientRect())
+        bgEls.forEach((el, i) => {
             const match = bgUrlRe.exec(el.style.backgroundImage || el.getAttribute('style') || '')
-            if (!match) continue
-
+            if (!match) return
             const rawUrl = match[1].trim()
-            if (!rawUrl || rawUrl.includes('.svg')) continue
-
+            if (!rawUrl || rawUrl.includes('.svg')) return
             let url
-            try { url = new URL(rawUrl, location.href).href } catch (e) { continue }
-
-            const rect = el.getBoundingClientRect()
-            if (rect.width < 100 || rect.height < 100) continue
-
-            candidates.push({ url, overlap: viewportOverlap(el) })
-        }
+            try { url = new URL(rawUrl, location.href).href } catch (e) { return }
+            const rect = bgRects[i]
+            if (rect.width < 100 || rect.height < 100) return
+            candidates.push({ url, overlap: viewportOverlap(rect) })
+        })
     } catch (e) { console.log(e) }
 
     // Sort by viewport overlap descending (visible images first), deduplicate
@@ -209,6 +209,7 @@ function getItem() {
             }
         } else {
             res = [...document.querySelectorAll('p')]
+                .slice(0, 50) // cap to avoid processing hundreds of paragraphs
                 .map(el => el.innerText.trim())
                 .filter(text => text.length > 40);
         }

@@ -40,23 +40,23 @@ export function getId(url) {
 }
 
 //reload
-export async function reload(force=false) {
+export async function reload(force = false) {
     if (loading && !force)
         return
 
     //do not load when no 'tabs' permission, origins access not required
-    try{
+    try {
         if (!await browser.permissions.contains({
             permissions: ['tabs']
         })) return
-    }catch(e){}
+    } catch (e) { }
 
     loading = true
     items = new Map()
 
     let text = ''
 
-    try{
+    try {
         text = await Api._get('raindrops/links', {
             cache: force ? 'no-store' : 'default',
             headers: {
@@ -64,18 +64,19 @@ export async function reload(force=false) {
             },
             timeout: 0
         })
-    } catch(e) {
+    } catch (e) {
         console.error(e)
+    } finally {
+        loading = false
     }
-    loading = false
 
     if (!text) return;
 
-    text.split('\n').forEach(line=>{
+    text.split('\n').forEach(line => {
         const [_id, href] = line.split(options.divider)
         const url = simplifyURL(
             decodeURIComponent(
-                href||''
+                href || ''
             )
         ).substr(0, options.maxLinkLength)
 
@@ -89,15 +90,15 @@ export async function reload(force=false) {
 
 //messaging
 const onMessage = debounce(
-    async function({ type }) {
-        switch(type) {
+    async function ({ type }) {
+        switch (type) {
             case 'BOOKMARKS_CHANGED':
                 await reload()
-            break
+                break
         }
-    }, 
-    350, 
-    { maxWait: 1000}
+    },
+    350,
+    { maxWait: 1000 }
 )
 
 //init
@@ -109,6 +110,6 @@ export default function () {
     //permissions
     browser.permissions.onAdded.removeListener(reload)
     browser.permissions.onAdded.addListener(reload)
-    
+
     reload()
 }
